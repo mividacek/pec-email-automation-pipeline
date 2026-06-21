@@ -2,6 +2,7 @@ import os
 from faker import Faker
 import random
 import re
+import shutil
 
 # initialize Faker with Italian locale for names with accents
 fake = Faker("it_IT")
@@ -10,14 +11,20 @@ def main() -> None:
     """
     Main Orchestration Function: Collects data from all modular functions and unifies them into the final Excel sheet.
     """
-    # getting the validated number of records from user
-    num_records = get_user_record_count()
-
     # creating a folder to store the attachments
     attachments_dir = "./doc"
-    os.makedirs(attachments_dir, exist_ok=True)
+
+    # cleaning up before creating starting
+    if os.path.exists(attachments_dir):
+        shutil.rmtree(attachments_dir)
+
+    # creating a new folder
+    os.makedirs(attachments_dir)
 
     system_breaking_chars, accent_char_map, vocal_map = get_system_configurations()
+
+    # getting the validated number of records from user
+    num_records = get_user_record_count()
 
     print(f"\n--- Generating {num_records} transaction records into the environment ---\n")
 
