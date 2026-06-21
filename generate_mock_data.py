@@ -10,7 +10,7 @@ def main() -> None:
     """
     Main Orchestration Function: Collects data from all modular functions and unifies them into the final Excel sheet.
     """
-    # getting the validated number of recorsa from user
+    # getting the validated number of records from user
     num_records = get_user_record_count()
 
     # creating a folder to store the attachments
@@ -45,7 +45,7 @@ def main() -> None:
 
 def get_system_configurations() -> tuple[list[str], dict[str, str], dict[str, list[str]]]:
     """Returns the forbidden characters and accent translation mappings."""
-    system_breaking_chars = ["!", "#", "@", "&", ";", ":"]
+    system_breaking_chars = ["!", "#", "@", "&", ";", ":", "–", "—"]
     accent_char_map = {
         "à": "a", "è": "e", "é": "e", "ì": "i", "ò": "o", "ù": "u",
         "À": "A", "È": "E", "É": "E", "Ì": "I", "Ò": "O", "Ù": "U",
@@ -57,22 +57,14 @@ def get_system_configurations() -> tuple[list[str], dict[str, str], dict[str, li
 
 
 def get_user_record_count() -> int:
-    """
-    Prompts the user for a number and strictly returns a valid positive integer.
-    """
+    """Prompts the user for a number and strictly returns a valid positive integer."""
     while True:
-        try:
-            user_input = input("Enter the number of records to generate: ").strip()
-            if user_input.isnumeric():
-                num_records = int(user_input)
-                if num_records > 0:
-                    return num_records
-                else:
-                    raise ValueError("Number must be greather than 0.")
-            else:
-                raise ValueError("Invalid input, please enter a whole positive number.")
-        except ValueError as error_message:
-            print(f"Error: {error_message}")
+        user_input = input("Enter the number of records to generate: ").strip()
+        
+        if user_input.isdigit() and int(user_input) > 0:
+            return int(user_input)
+            
+        print("Error: Invalid input, please enter a whole positive number greater than 0.")
 
 def generate_base_company_name(vocal_map: dict[str, list[str]]) -> str:
     """
@@ -88,8 +80,6 @@ def generate_base_company_name(vocal_map: dict[str, list[str]]) -> str:
         base_company = base_company[:-1] + accented_char
     if random.random() < 0.5:
         base_company = f"{base_company} {fake.bs()}"
-
-    print(base_company)
 
     return base_company
 
@@ -124,14 +114,14 @@ def generate_company_email(base_company: str, accent_char_map: dict) -> str:
         return f"{email_slug}@{chosen_domain}"
 
 def generate_company_vat() -> str:
-    """Gnerates a standard corporate VAT code (Partita IVA)."""
+    """Generates a standard corporate VAT code (Partita IVA)."""
     company_VAT = fake.company_vat()
     return company_VAT
 
 def create_file_name(base_company: str, company_VAT: str, index: int, system_breaking_chars: list) -> str:
     """Constructs an individual attachment filename with a strict 15% error rate."""
-    base_prefixes = ["Notice to", "Agreement for"]
-    prefix = base_prefixes[index]
+    base_prefixes = ["Avviso per", "Accordo per"]
+    prefix = base_prefixes[index] if index < len(base_prefixes) else "Documento per" # fallback
 
     if random.random() >= 0.15:
         return f"{prefix} {base_company} - {company_VAT}.pdf"
@@ -149,6 +139,7 @@ def create_file_name(base_company: str, company_VAT: str, index: int, system_bre
         return f'"{prefix} {base_company} - {company_VAT}.pdf"'
     if mistake_type == "spaces":
         return f"{prefix} {base_company} - {company_VAT}.pdf "
+    return f"{prefix} {base_company} - {company_VAT}.pdf" # fallback
     
     
 if __name__ == "__main__":
