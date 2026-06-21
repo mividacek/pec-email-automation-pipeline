@@ -17,16 +17,16 @@ def main() -> None:
     attachments_dir = "./test_attachments"
     os.makedirs(attachments_dir, exist_ok=True)
 
-    system_breaking_chars, accent_map = get_system_configurations()
+    system_breaking_chars, accent_char_map, vocal_map = get_system_configurations()
 
     print(f"\n--- Generating {num_records} transaction records into the environment ---")
 
     # the loop dinamically runs up to the user-specified row count
     for _ in range(num_records):
 
-        base_company = generate_base_company_name()
+        base_company = generate_base_company_name(vocal_map)
         company_name = generate_company_full_name(base_company)
-        company_email = generate_company_email(base_company, accent_map)
+        company_email = generate_company_email(base_company, accent_char_map)
         company_VAT = generate_company_vat()
         generated_attachments = [None, None]
         attachment_1 = generated_attachments[0] 
@@ -43,15 +43,17 @@ def main() -> None:
 
 
 
-def get_system_configurations() -> tuple[list, dict]:
+def get_system_configurations() -> tuple[list[str], dict[str, str], dict[str, list[str]]]:
     """Returns the forbidden characters and accent translation mappings."""
     system_breaking_chars = ["!", "#", "@", "&", ";", ":"]
-    accent_map = {
+    accent_char_map = {
         "à": "a", "è": "e", "é": "e", "ì": "i", "ò": "o", "ù": "u",
         "À": "A", "È": "E", "É": "E", "Ì": "I", "Ò": "O", "Ù": "U",
         "–": "-", "—": "-"
     }
-    return system_breaking_chars, accent_map
+
+    vocal_map = { "a": ["à"], "e": ["è", "é"], "u": ["ù"]}
+    return system_breaking_chars, accent_char_map, vocal_map
 
 
 def get_user_record_count() -> int:
@@ -72,14 +74,25 @@ def get_user_record_count() -> int:
         except ValueError as error_message:
             print(f"Error: {error_message}")
 
-def generate_base_company_name() -> str:
-        """Generates the core base name of the company."""
-        if random.random() < 0.5:
-            base_company = fake.last_name()
-        else:
-            base_company = f"{fake.last_name()} {fake.bs()}"
-            base_company = base_company.title()
-        return base_company
+def generate_base_company_name(vocal_map: dict[str, list[str]]) -> str:
+    """
+    Generates the core base name of the company.
+    Enforces a conditional 40% chance for an Italian accent on the final character of the last name,
+    then independently applies a 50% chance to append a business statement.
+    """
+    base_company = fake.last_name()
+    last_char = base_company[-1]
+
+    if last_char in vocal_map and random.random() < 0.4:
+        accented_char = random.choice(vocal_map[last_char])
+        base_company = base_company[:-1] + accented_char
+    if random.random() < 0.5:
+        base_company = f"{base_company} {fake.bs()}"
+
+    print(base_company)
+
+    return base_company
+
 
 def generate_company_full_name(base_company: str) -> str:
     """Appends a uniform legal corporate suffix to the base company name."""
@@ -88,10 +101,10 @@ def generate_company_full_name(base_company: str) -> str:
     company_name = f"{base_company} {suffix}"
     return company_name
 
-def generate_company_email(base_company: str, accent_map: dict) -> str:
+def generate_company_email(base_company: str, accent_char_map: dict) -> str:
     """Cleans accents and generates a PEC email with a rare 2%"""
     email_slug = base_company.lower().replace(" ",".")
-    for target, replacement in accent_map.items():
+    for target, replacement in accent_char_map.items():
         email_slug = email_slug.replace(target, replacement)
     email_slug = re.sub(r"[^\w\.]", "", email_slug)
     chosen_domain = random.choice(["legalmail.it", "pec.it", "postecert.it"])
