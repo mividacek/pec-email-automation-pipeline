@@ -19,7 +19,7 @@ def main() -> None:
 
     system_breaking_chars, accent_char_map, vocal_map = get_system_configurations()
 
-    print(f"\n--- Generating {num_records} transaction records into the environment ---")
+    print(f"\n--- Generating {num_records} transaction records into the environment ---\n")
 
     # the loop dinamically runs up to the user-specified row count
     for _ in range(num_records):
@@ -28,19 +28,17 @@ def main() -> None:
         company_name = generate_company_full_name(base_company)
         company_email = generate_company_email(base_company, accent_char_map)
         company_VAT = generate_company_vat()
+
         generated_attachments = [None, None]
-        attachment_1 = generated_attachments[0] 
-        attachment_2 = generated_attachments[1]
-        
+
         # attachments
         for i in range(random.choice([1, 2])):
             generated_attachments[i] = create_file_name(base_company, company_VAT, i, system_breaking_chars)
 
-            attachment_1 = generated_attachments[0]
-            attachment_2 = generated_attachments[1]
-        
-    print(f"Attachment 1: {attachment_1}\nAttachment 2: {attachment_2}\n" + "-"*30)
+            attachment_1, attachment_2 = generated_attachments
 
+        print(f"Company: {company_name}\nEmail: {company_email}\nVAT: {company_VAT}\nAttachment 1: {attachment_1}\nAttachment 2: {attachment_2}")
+        print("-" * 60)
 
 
 def get_system_configurations() -> tuple[list[str], dict[str, str], dict[str, list[str]]]:
