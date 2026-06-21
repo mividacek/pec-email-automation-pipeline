@@ -3,6 +3,7 @@ from faker import Faker
 import random
 import re
 import shutil
+import pandas as pd
 
 # initialize Faker with Italian locale for names with accents
 fake = Faker("it_IT")
@@ -25,6 +26,9 @@ def main() -> None:
 
     # getting the validated number of records from user
     num_records = get_user_record_count()
+
+    # empty list for all records
+    transaction_records = []
 
     print(f"\n--- Generating {num_records} transaction records into the environment ---\n")
 
@@ -73,8 +77,25 @@ def main() -> None:
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(file_content)
 
+        # adding a dictionary with the company data
+        transaction_records.append({
+            "Azienda": company_name,
+            "VAT": company_VAT,
+            "Email": company_email,
+            "Allegato 1": attachment_1,
+            "Allegato 2": attachment_2
+        })
+
         print(f"Company: {company_name}\nEmail: {company_email}\nVAT: {company_VAT}\nAttachment 1: {attachment_1}\nAttachment 2: {attachment_2}")
         print("-" * 60)
+    
+    # creating excel files
+    print("\n--- Saving records to Excel database ---")
+    df = pd.DataFrame(transaction_records)
+
+    excel_path = "./richiesta.xlsx"
+    df.to_excel(excel_path, index=False)
+    print(f"Successfully generated Excel database at: {excel_path}\n")
 
 
 def get_system_configurations() -> tuple[list[str], dict[str, str], dict[str, list[str]]]:
