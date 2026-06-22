@@ -64,7 +64,7 @@ def generate_environment(num_records: int) -> None:
         base_company = generate_base_company_name(vocal_map)
         company_name = generate_company_full_name(base_company)
         company_email = generate_company_email(base_company, accent_char_map)
-        company_VAT = generate_company_vat()
+        company_vat = generate_company_vat()
 
         generated_excel_names = [None, None]
         generated_disk_names = [None, None]
@@ -74,7 +74,7 @@ def generate_environment(num_records: int) -> None:
         num_attachments = random.choice([1, 2])
 
         for i in range(num_attachments):
-            excel_name, disk_name, base_name = create_file_name(base_company, company_VAT, i, system_breaking_chars)
+            excel_name, disk_name, base_name = create_file_name(base_company, company_vat, i, system_breaking_chars)
             generated_excel_names[i] = excel_name
             generated_disk_names[i] = disk_name
             generated_clean_names[i] = base_name
@@ -95,7 +95,7 @@ def generate_environment(num_records: int) -> None:
                 f"{clean_title}\n"
                 f"Azienda: {company_name}\n"
                 f"Email: {company_email}\n"
-                f"VAT: {company_VAT}\n"
+                f"VAT: {company_vat}\n"
                 f"{attachment_text}"
             )
 
@@ -106,13 +106,13 @@ def generate_environment(num_records: int) -> None:
         # adding a dictionary with the company data
         transaction_records.append({
             "Azienda": company_name,
-            "VAT": company_VAT,
+            "VAT": company_vat,
             "Email": company_email,
             "Allegato 1": attachment_1,
             "Allegato 2": attachment_2
         })
 
-        print(f"Company: {company_name}\nEmail: {company_email}\nVAT: {company_VAT}\nAttachment 1: {attachment_1}\nAttachment 2: {attachment_2}")
+        print(f"Company: {company_name}\nEmail: {company_email}\nVAT: {company_vat}\nAttachment 1: {attachment_1}\nAttachment 2: {attachment_2}")
         print("-" * 60)
     
     # creating excel files
@@ -229,81 +229,93 @@ def generate_company_vat() -> str:
         str:
             Randomly generated VAT identifier.
     """
-    company_VAT = fake.company_vat()
-    return company_VAT
+    company_vat = fake.company_vat()
+    return company_vat
 
-def create_file_name(base_company: str, company_VAT: str, index: int, system_breaking_chars: list) -> tuple[str, str]:
+def create_file_name(base_company: str, company_vat: str, index: int, system_breaking_chars: list[str]) -> tuple[str, str, str]:
     """
     Constructs file naming profiles for database logging and physical storage.
 
-    Generates a standardized base name using transaction-specific prefixes, 
-    the company name, and its VAT number. It introduces synthetic data corruption 
-    (syntax anomalies, illegal characters, quote clipping, spacing issues, and 
-    malformed extensions) into the database string track based on a 15% probability.
-    
-    The physical storage track independently filters these anomalies to respect 
-    Operating System (OS) file system rules, while preserving allowed test characters 
-    and factoring in a rare 1% discrepancy drift.
+    Generates a standardized base name using transaction-specific prefixes, the company name, and its VAT number. The Excel filename may contain intentional syntheric corruption, while the disk filename is made safe for filesystem creation.
 
     Args:
         base_company (str): The unmutated base name of the corporate entity.
-        company_VAT (str): The unique corporate Italian VAT identifier string.
+        company_vat (str): The unique corporate Italian VAT identifier string.
         index (int): The relative position pointer used for structural prefix routing.
-        system_breaking_chars (list[str]): A collection of allowed non-alphanumeric syntax markers.
-
+        system_breaking_chars (list[str]): Characters used to simulate Excel/database corruption.
+    
     Returns:
-        tuple[str, str, str]: A synchronized tuple containing:
-            - excel_name: The raw syntactic string designated for the Excel database log.
-            - disk_name: The OS-sanitized path-safe string for physical disk storage.
-            - base_name: The pristine, extension-free string acting as an immutable metadata token.
+        A tuple containg:
+            excel_name (str): Raw name stored in Excel, possibly corrupted.
+            disk_name (str): Filesystem-safe name used for the physical file.
+            base_name (str): Clean extension-free reference name.
     """
     base_prefixes = ["Avviso per", "Accordo per"]
-    prefix = base_prefixes[index] if index < len(base_prefixes) else "Documento per" # fallback
-
-    # creating base name with no mistakes
-    base_name = f"{prefix} {base_company} - {company_VAT}"
+    prefix = base_prefixes[index] if index < len(base_prefixes) else "Documento per" #fallback    
+    
+    base_name = f"{prefix} {base_company} - {company_vat}"
     base_ext = ".pdf"
 
-    # setting up chances of name in excel file being corrupted
+    # disk-safe version of the intended clean filename.
+    disk_safe_base_name = re.sub(r'[<>:"/\\|?*]', "-", base_name).strip()
+
+    # excel
     excel_is_corrupted = random.random() < 0.15
 
-    # generating name for excel file
     if not excel_is_corrupted:
         excel_base = base_name
         excel_ext = base_ext
+
+        disk_base = disk_safe_base_name
+        disk_ext = base_ext
+
     else:
-        excel_mistake = random.choice(["chars", "quotes", "spaces", "extension"])
-        excel_mistake_ext = random.choices([base_ext, _corrupt_disk_extension()], weights = [0.65, 0.35])[0]
+        excel_mistake = random.choice(
+            ["chars", "quotes", "spaces", "extension"]
+        )
+
+        excel_mistake_ext = random.choices(
+            [base_ext, _corrupt_disk_extension()],
+            weights=[0.65, 0.35]
+        )[0]
+
         if excel_mistake == "chars":
             chosen_char = random.choice(system_breaking_chars)
-            excel_base = f"{prefix} {base_company} {chosen_char} {company_VAT}"
+
+            excel_base = f"{prefix} {base_company} {chosen_char} {company_vat}"
             excel_ext = excel_mistake_ext
+
+            disk_base = disk_safe_base_name
+            disk_ext = excel_mistake_ext
+
         elif excel_mistake == "quotes":
             excel_base = f'"{base_name}'
             excel_ext = f'{excel_mistake_ext}"'
+
+            disk_base = disk_safe_base_name
+            disk_ext = excel_mistake_ext
+
         elif excel_mistake == "spaces":
             excel_base = base_name
             excel_ext = f"{excel_mistake_ext} "
+
+            disk_base = disk_safe_base_name
+            disk_ext = excel_mistake_ext.strip()
+
         else:
             excel_base = base_name
             excel_ext = _corrupt_disk_extension()
 
+            disk_base = disk_safe_base_name
+            disk_ext = excel_ext
+        
     excel_name = f"{excel_base}{excel_ext}"
     
-    # generating disk file name
-    if not excel_is_corrupted:
-        disk_base = excel_base
-        disk_ext = excel_ext
-    else:
-        disk_base = excel_base.replace('"', '').replace(':', '')
-        disk_ext = excel_ext.replace('"', '').strip()
-    
-    if random.random() < 0.01:
-        disk_ext = _corrupt_disk_extension()
-
+    # attachments
     disk_name = f"{disk_base}{disk_ext}"
-
+        
     return excel_name, disk_name, base_name
+
 
 
 def _corrupt_disk_extension() -> str:

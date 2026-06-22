@@ -1,20 +1,3 @@
-# ==========================================================
-# KNOWN ISSUE
-# ==========================================================
-#
-# Integration tests currently expose a filesystem bug.
-#
-# Some Faker-generated company names may contain path
-# separator characters (e.g. "24/7"), resulting in
-# FileNotFoundError when attachment files are written
-# to disk.
-#
-# The issue was discovered through integration testing
-# and will be addressed by introducing filename
-# sanitization in a future revision.
-#
-# ==========================================================
-
 import pytest
 import pandas as pd
 from pathlib import Path
@@ -177,17 +160,18 @@ def test_base_name_contains_no_extension():
     assert not base_name.endswith(".pdf")
 
 
-def test_disk_name_never_contains_quotes():
-    for _ in range(250):
+def test_disk_name_never_contains_filesystem_reserved_characters():
+    reserved_chars = set('<>:"/\\|?*')
 
+    for _ in range(250):
         _, disk_name, _ = create_file_name(
-            "Rossi",
+            "Rossi 24:7",
             "IT12345678901",
             0,
-            ["!", "#"]
+            ["!", "#", "@", "&", ";", ":", "–", "—"]
         )
 
-        assert '"' not in disk_name
+        assert not any(char in disk_name for char in reserved_chars)
 
 
 def test_disk_name_never_has_trailing_spaces():
@@ -234,6 +218,19 @@ def test_fallback_prefix_for_additional_attachments():
     )
 
     assert base_name.startswith("Documento per")
+
+def test_disk_name_replaces_filesystem_reserved_characters():
+    excel_name, disk_name, base_name = create_file_name(
+        "Rossi 24:7",
+        "IT12345678901",
+        0,
+        ["!", "#"]
+    )
+
+    assert "24:7" in excel_name
+    assert "24-7" in disk_name
+    assert "/" not in disk_name
+    assert ":" not in disk_name
 
 # GENERATOR BEHAVIOUR TESTS
 

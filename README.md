@@ -226,22 +226,8 @@ pytest --cov=generate_mock_data
 
 ---
 
-## Known Issue
-
-Current integration tests expose a filesystem compatibility issue.
-
-Some Faker-generated company names may contain path separator characters such as:
-
-```text
-24/7
-```
-
-These characters can result in invalid file paths and cause a `FileNotFoundError` during attachment creation.
-
-The issue was discovered through integration testing and will be addressed by introducing filename sanitization before writing files to disk.
-
-The failing tests are intentionally preserved at this stage to document the development and debugging process.
-
+## Fixed issues
+The generator creates both valid and intentionally malformed records for testing data-cleaning pipelines. Generated attachment filenames are automatically sanitized for filesystem compatibility while preserving discrepancies between Excel records and physical files.
 ---
 
 ## Future Development
