@@ -223,6 +223,16 @@ For coverage reporting:
 ```bash
 pytest --cov=generate_mock_data
 ```
+---
+
+## Quality Assurance
+
+Current test suite:
+
+- 22 automated tests
+- Unit tests
+- Integration tests
+- 94% code coverage
 
 ---
 

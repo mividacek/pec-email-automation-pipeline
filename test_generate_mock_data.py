@@ -278,7 +278,7 @@ def test_excel_and_disk_name_can_differ():
 
     assert difference_found
 
-### INEGRATION TESTS
+### INTEGRATION TESTS
 
 # GENERATING OUTPUT FILES
 
