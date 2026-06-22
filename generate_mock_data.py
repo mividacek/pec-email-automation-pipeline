@@ -10,23 +10,49 @@ fake = Faker("it_IT")
 
 def main() -> None:
     """
-    Main Orchestration Function: Collects data from all modular functions and unifies them into the final Excel sheet.
+    Entry point of the application.
+
+    Requests the number of synthetic records from the user
+    and delegates the generation process to the environment
+    builder.
+
+    Returns:
+        None
     """
-    # creating a folder to store the attachments
+    # getting the validated number of records from user
+    num_records = get_user_record_count()
+    generate_environment(num_records)
+
+
+def generate_environment(num_records: int) -> None:
+    """
+    Generates a complete synthetic document-processing environment.
+
+    Creates a fresh attachment directory, generates the requested number
+    of synthetic company records, writes attachment files to disk, and
+    exports all generated metadata into an Excel workbook.
+
+    The generated dataset intentionally contains controlled anomalies
+    (invalid emails, malformed filenames, illegal characters, spacing
+    issues, and extension errors) to support testing and training of
+    data-cleaning pipelines.
+
+    Args:
+        num_records (int):
+            Number of company records to generate.
+
+    Returns:
+        None
+    """
     attachments_dir = "./doc"
 
-    # cleaning up before creating starting
     if os.path.exists(attachments_dir):
         shutil.rmtree(attachments_dir)
 
-    # creating a new folder
     os.makedirs(attachments_dir)
 
     system_breaking_chars, accent_char_map, vocal_map = get_system_configurations()
-
-    # getting the validated number of records from user
-    num_records = get_user_record_count()
-
+    
     # empty list for all records
     transaction_records = []
 
@@ -112,7 +138,12 @@ def get_system_configurations() -> tuple[list[str], dict[str, str], dict[str, li
 
 
 def get_user_record_count() -> int:
-    """Prompts the user for a number and strictly returns a valid positive integer."""
+    """
+    Prompts the user until a valid positive integer is entered.
+
+    Returns:
+        int: Number of records to generate.
+    """
     while True:
         user_input = input("Enter the number of records to generate: ").strip()
         
@@ -120,6 +151,7 @@ def get_user_record_count() -> int:
             return int(user_input)
             
         print("Error: Invalid input, please enter a whole positive number greater than 0.")
+
 
 def generate_base_company_name(vocal_map: dict[str, list[str]]) -> str:
     """
@@ -147,7 +179,28 @@ def generate_company_full_name(base_company: str) -> str:
     return company_name
 
 def generate_company_email(base_company: str, accent_char_map: dict) -> str:
-    """Cleans accents and generates a PEC email with a rare 2%"""
+    """
+    Generates a synthetic PEC email address.
+
+    Normalizes accented characters, formats the company name
+    into an email-compatible slug, and assigns a valid PEC
+    domain.
+
+    A small percentage of generated emails intentionally
+    contain formatting errors to simulate real-world data
+    quality issues.
+
+    Args:
+        base_company (str):
+            Base company name.
+
+        accent_char_map (dict):
+            Mapping of accented characters to ASCII equivalents.
+
+    Returns:
+        str:
+            Generated email address.
+    """
     email_slug = base_company.lower().replace(" ",".")
     for target, replacement in accent_char_map.items():
         email_slug = email_slug.replace(target, replacement)
@@ -169,7 +222,13 @@ def generate_company_email(base_company: str, accent_char_map: dict) -> str:
         return f"{email_slug}@{chosen_domain}"
 
 def generate_company_vat() -> str:
-    """Generates a standard corporate VAT code (Partita IVA)."""
+    """
+    Generates a synthetic Italian VAT number.
+
+    Returns:
+        str:
+            Randomly generated VAT identifier.
+    """
     company_VAT = fake.company_vat()
     return company_VAT
 
@@ -248,7 +307,16 @@ def create_file_name(base_company: str, company_VAT: str, index: int, system_bre
 
 
 def _corrupt_disk_extension() -> str:
-    """Helper function that returns only the corrupted extension string."""
+    """
+    Returns a deliberately malformed file extension.
+
+    Used to simulate common user or system mistakes
+    encountered in document management workflows.
+
+    Returns:
+        str:
+            Corrupted extension variant.
+    """
     disk_mistake = random.choice(["no_ext", "double_dot_ext", "double_ext"])
     if disk_mistake == "no_ext":
         return ""
