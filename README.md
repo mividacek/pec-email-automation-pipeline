@@ -23,7 +23,7 @@ The dataset intentionally includes realistic data-quality issues such as malform
 
 This project is currently under active development.
 
-Version 1 focuses on synthetic data generation and automated testing.
+Version 1 focuses on synthetic data generation and automated testing, and simulation of document reconciliation scenarios.
 
 Future milestones include:
 
@@ -99,19 +99,41 @@ Current functionality includes:
 * Synthetic company generation using Faker
 * Italian VAT number generation
 * PEC email generation
-* Physical attachment file creation
+* Physical PDF attachment generation
 * Excel export generation using Pandas
 * Controlled data corruption for testing purposes
+* Simulation of missing attachments
+* Simulation of orphan-attachments
+* Filesystem-safe filename generation
 * Unit testing with pytest
 * Integration testing of the complete generation workflow
 
 Examples of intentionally generated anomalies include:
 
 * Invalid email formats
-* Malformed file extensions
+* Malformed PDF extensions
 * Illegal filename characters
 * Leading and trailing spaces
 * Filename mismatches between Excel records and disk files
+* Attachments referenced in Excel but missing from disk
+* Attachments present on disk but missing from Excel
+
+
+## Synthetic Error Simulation
+
+The generator intentionally creates realistic inconsistencies commonly found in document-processing workflows.
+
+Examples include:
+
+* Invalid PEC email formats
+* Malformed PDF extensions
+* Illegal filename characters
+* Filesystem-safe filename normalization
+* Missing attachments referenced in Excel
+* Orphan attachments present only on disk
+* Filename discrepancies between Excel records and physical documents
+
+These anomalies provide realistic input data for the future validation and machine-learning pipeline.
 
 ---
 
@@ -191,6 +213,8 @@ Unit tests validate individual business rules, including:
 * File naming logic
 * Corrupted extension generation
 * Filename consistency checks
+* Attachment file writing helper
+* Orphan attachment file generation helper
 
 ### Integration Tests
 
@@ -201,6 +225,7 @@ Integration tests validate the complete workflow, including:
 * Excel export generation
 * Output schema validation
 * Required field validation
+* Attachment reconciliation scenrarios
 
 ---
 
@@ -229,10 +254,14 @@ pytest --cov=generate_mock_data
 
 Current test suite:
 
-- 22 automated tests
+- 25 automated tests
 - Unit tests
 - Integration tests
-- 94% code coverage
+- 95% code coverage
+
+The test suite includes a deterministic integration test for orphan attachments, verifying that files can exist on disk without a corresponding Excel record.
+
+A separate deterministic test for randomly generated missing attachments is not included yet because missing files are currently created using probabilistic generation. This scenario will be tested more precisely in the future validation pipeline, where missing attachment detection can be tested directly against controlled input data.
 
 ---
 
@@ -244,10 +273,7 @@ The generator creates both valid and intentionally malformed records for testing
 
 Planned improvements include:
 
-* Missing attachment simulation
-* Orphan attachment simulation
 * Attachment reconciliation between Excel records and disk files
-* Filename sanitization
 * Automated validation pipeline
 * Audit log generation
 * Data quality reporting
@@ -270,5 +296,7 @@ This project provided practical experience with:
 * Automated testing with pytest
 * Integration testing
 * Debugging edge cases caused by random data generation
+* Designing maintainable helper functions
+* Separate business logic from file generation
 
 One of the most valuable findings was identifying a filesystem bug through integration testing, demonstrating how automated tests can uncover issues that are difficult to detect through manual testing alone.

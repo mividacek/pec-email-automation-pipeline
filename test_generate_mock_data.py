@@ -9,6 +9,8 @@ from generate_mock_data import (
     create_file_name,
     _corrupt_disk_extension,
     generate_environment,
+    write_attachment_files,
+    create_orphan_file,
 )
 
 ### UNIT TESTS
@@ -278,6 +280,49 @@ def test_excel_and_disk_name_can_differ():
 
     assert difference_found
 
+# ATTACHMENT FILE TESTS
+
+def test_write_attachment_files_creates_expected_files(tmp_path):
+    """
+    Verify that the attachment writer creates
+    the expected physical files on disk.
+    """
+
+    disk_names = ["test_1.pdf", "test_2.pdf"]
+    clean_names = ["Test 1", "Test 2"]
+
+    write_attachment_files(
+        attachments_dir=str(tmp_path),
+        disk_names=disk_names,
+        clean_names=clean_names,
+        company_name="Rossi S.r.l.",
+        company_email="rossi@pec.it",
+        company_vat="IT12345678901",
+        allow_missing=False,
+    )
+
+    assert (tmp_path / "test_1.pdf").exists()
+    assert (tmp_path / "test_2.pdf").exists()
+
+
+def test_create_orphan_file_creates_attachment_files(tmp_path):
+    """
+    Verify that creating an orphan transaction
+    generates attachment files without requiring
+    an Excel record.
+    """
+
+    _, accent_char_map, vocal_map = get_system_configurations()
+
+    create_orphan_file(
+        attachments_dir=str(tmp_path),
+        system_breaking_chars=["!", "#", "@", "&", ";", ":", "–", "—"],
+        accent_char_map=accent_char_map,
+        vocal_map=vocal_map,
+    )
+
+    assert len(list(tmp_path.iterdir())) >= 1
+
 ### INTEGRATION TESTS
 
 # GENERATING OUTPUT FILES
@@ -360,3 +405,28 @@ def test_generated_records_have_required_fields():
     assert df["VAT"].notna().all()
     assert df["Email"].notna().all()
     assert df["Allegato 1"].notna().all()
+
+# RECONCILIATION TESTS
+
+def test_environment_generates_orphan_attachments():
+    """
+    Verify that at least one attachment exists
+    on disk without a corresponding Excel record.
+    """
+
+    generate_environment(250)
+
+    df = pd.read_excel("richiesta.xlsx")
+
+    excel_files = set(
+        df["Allegato 1"].dropna().tolist()
+        + df["Allegato 2"].dropna().tolist()
+    )
+
+    disk_files = {
+        file.name
+        for file in Path("doc").iterdir()
+        if file.is_file()
+    }
+
+    assert len(disk_files - excel_files) > 0
