@@ -66,9 +66,9 @@ def generate_environment(num_records: int) -> None:
         company_email = generate_company_email(base_company, accent_char_map)
         company_vat = generate_company_vat()
 
-        generated_excel_names = [None, None]
-        generated_disk_names = [None, None]
-        generated_clean_names = [None, None]
+        generated_excel_names: list[str | None] = [None, None]
+        generated_disk_names: list[str | None] = [None, None]
+        generated_clean_names: list[str | None] = [None, None]
 
         # attachments
         num_attachments = random.choice([1, 2])
@@ -79,29 +79,19 @@ def generate_environment(num_records: int) -> None:
             generated_disk_names[i] = disk_name
             generated_clean_names[i] = base_name
         
-        clean_attachment_1, clean_attachment_2 = generated_clean_names
-        attachment_1, attachment_2 = generated_excel_names
+        attachment_1 = generated_excel_names[0]
+        attachment_2 = generated_excel_names[1]
 
-        if num_attachments == 1:
-            attachment_text = f"Allegato: {clean_attachment_1}"
-        else:
-            attachment_text = f"Allegati: {clean_attachment_1}\n          {clean_attachment_2}"
+        write_attachment_files(
+            attachments_dir=attachments_dir,
+            disk_names=generated_disk_names,
+            clean_names=generated_clean_names,
+            company_name=company_name,
+            company_email=company_email,
+            company_vat=company_vat,
+            allow_missing=True
+        )
 
-        for i in range(num_attachments):
-            disk_name = generated_disk_names[i]
-            clean_title = generated_clean_names[i]
-
-            file_content = (
-                f"{clean_title}\n"
-                f"Azienda: {company_name}\n"
-                f"Email: {company_email}\n"
-                f"VAT: {company_vat}\n"
-                f"{attachment_text}"
-            )
-
-            file_path = os.path.join(attachments_dir, disk_name)
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(file_content)
 
         # adding a dictionary with the company data
         transaction_records.append({
@@ -115,6 +105,17 @@ def generate_environment(num_records: int) -> None:
         print(f"Company: {company_name}\nEmail: {company_email}\nVAT: {company_vat}\nAttachment 1: {attachment_1}\nAttachment 2: {attachment_2}")
         print("-" * 60)
     
+    # creating orphan files
+    orphan_count = max(1, int(num_records * 0.03))
+
+    for _ in range(orphan_count):
+        create_orphan_file(
+            attachments_dir=attachments_dir,
+            system_breaking_chars=system_breaking_chars,
+            accent_char_map=accent_char_map,
+            vocal_map=vocal_map
+        )
+
     # creating excel files
     print("\n--- Saving records to Excel database ---")
     df = pd.DataFrame(transaction_records)
@@ -317,7 +318,6 @@ def create_file_name(base_company: str, company_vat: str, index: int, system_bre
     return excel_name, disk_name, base_name
 
 
-
 def _corrupt_disk_extension() -> str:
     """
     Returns a deliberately malformed file extension.
@@ -335,6 +335,141 @@ def _corrupt_disk_extension() -> str:
     if disk_mistake == "double_dot_ext":
         return "..pdf"
     return ".pdf.pdf"
+
+def write_attachment_files(attachments_dir: str, disk_names: list[str | None], clean_names: list[str | None], company_name: str, company_email: str, company_vat: str, allow_missing: bool = False) -> None:
+    """
+    Writes generated attachment files to disk.
+
+    Creates physical attachment files using generated company metadata
+    and attachment names. If allow_missing is True, some files are
+    intentionally skipped to simulate Excel records that reference
+    attachments missing from disk.
+
+    Args:
+        attachments_dir (str):
+            Directory where attachment files will be created.
+
+        disk_names (list[str | None]):
+            Disk-safe attachment filenames. The second item may be None
+            when the company has only one attachment.
+
+        clean_names (list[str | None]):
+            Clean attachment titles written inside the file content.
+            The second item may be None when the company has only one
+            attachment.
+
+        company_name (str):
+            Generated full company name.
+
+        company_email (str):
+            Generated company PEC email address.
+
+        company_vat (str):
+            Generated company VAT number.
+
+        allow_missing (bool):
+            If True, randomly skips some files to simulate missing
+            attachments. If False, writes all generated attachments.
+
+    Returns:
+        None
+
+        The function creates files directly on disk as a side effect.
+        The created files are the output of the operation, so no return
+        value is needed.
+    """
+    clean_attachment_1, clean_attachment_2 = clean_names
+
+    if clean_attachment_2 is None:
+        attachment_text = f"Allegato: {clean_attachment_1}"
+    else:
+        attachment_text = (
+            f"Allegati: {clean_attachment_1}\n"
+            f"          {clean_attachment_2}"
+        )
+
+    for i, disk_name in enumerate(disk_names):
+        if disk_name is None:
+            continue
+
+        if allow_missing and random.random() < 0.03:
+            continue
+
+        clean_title = clean_names[i]
+
+        file_content = (
+            f"{clean_title}\n"
+            f"Azienda: {company_name}\n"
+            f"Email: {company_email}\n"
+            f"VAT: {company_vat}\n"
+            f"{attachment_text}"
+        )
+
+        file_path = os.path.join(attachments_dir, disk_name)
+
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(file_content)
+
+def create_orphan_file(attachments_dir: str, system_breaking_chars: list[str], accent_char_map: dict[str, str], vocal_map: dict[str, list[str]]) -> None:
+    """
+    Creates one orphan company attachment set.
+
+    Orphan attachments are valid physical files on disk, but they are
+    not represented by any row in the Excel export.
+
+    Args:
+        attachments_dir (str):
+            Directory where orphan attachment files will be created.
+
+        system_breaking_chars (list[str]):
+            Characters used to simulate Excel/database filename
+            corruption.
+
+        accent_char_map (dict[str, str]):
+            Mapping used to normalize accented characters in generated
+            email addresses.
+
+        vocal_map (dict[str, list[str]]):
+            Mapping used to optionally add accented vowels to generated
+            company names.
+
+    Returns:
+        None
+
+        The function writes orphan files directly to disk. It does not
+        return data because the purpose is to create physical files that
+        are intentionally missing from the Excel export.
+    """
+    base_company = generate_base_company_name(vocal_map)
+    company_name = generate_company_full_name(base_company)
+    company_email = generate_company_email(base_company, accent_char_map)
+    company_vat = generate_company_vat()
+
+    generated_disk_names = [None, None]
+    generated_clean_names = [None, None]
+
+    num_attachments = random.choice([1, 2])
+
+    for i in range(num_attachments):
+        _, disk_name, base_name = create_file_name(
+            base_company,
+            company_vat,
+            i,
+            system_breaking_chars,
+        )
+
+        generated_disk_names[i] = disk_name
+        generated_clean_names[i] = base_name
+
+    write_attachment_files(
+        attachments_dir=attachments_dir,
+        disk_names=generated_disk_names,
+        clean_names=generated_clean_names,
+        company_name=company_name,
+        company_email=company_email,
+        company_vat=company_vat,
+        allow_missing=False,
+    )
     
 if __name__ == "__main__":
     main()
