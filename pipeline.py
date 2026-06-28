@@ -6,8 +6,7 @@ def main():
     attachments_path = "doc/"
     df = load_excel_data(excel_path)
     attachments = load_attachment_filenames(attachments_path)
-
-
+    normalized_attachments = normalize_attachment_filenames(attachments)
 
 def load_excel_data(excel_path: str) -> pd.DataFrame:
     """
@@ -31,20 +30,62 @@ def load_excel_data(excel_path: str) -> pd.DataFrame:
     
     return df
 
-def load_attachment_filenames(attachments_path: str) -> set:
+def load_attachment_filenames(attachments_path: str) -> list[str]:
     """
-    Loads the content of the directory used by the validation pipeline and returns them as a set.
+    Loads the content of the directory used by the validation pipeline and returns them as a list of strings.
 
     Args:
         attachments_path (str)
             Path to the document folder.
 
     Returns:
-        set
-            Set of attachment filenames.
+        attachments (list[str])
+            List of loaded attachment filenames.
     """
-    attachments = set(os.listdir(attachments_path))
+    attachments = os.listdir(attachments_path)
     return attachments
+
+def normalize_attachment_filenames(attachments: list[str]) -> list[str]:
+    """
+    Normalizes the attachment filenames by sanitizing the extension and returns them as a list of strings.
+
+    Args:
+        attachments (list[str])
+            List of loaded attachment filenames.
+
+    Returns:
+        normalized_attachments (list[str])
+            List of normalized attachment filenames.
+    """
+    normalized_attachments = []
+    for i in attachments:
+        normalized_attachments.append(_normalize_pdf_extension(i))
+    return normalized_attachments
+
+def _normalize_pdf_extension(filename: str) -> str:
+    """
+    Normalizes the extension of file names.
+
+    Args:
+        filename (str)
+            File name to normalize.
+
+    Returns:
+        normalized_filename (str)
+            Normalized file name.
+    """
+    if filename.endswith("..pdf"):
+        base_name = filename[:-5]
+    elif filename.endswith(".pdf.pdf"):
+        base_name = filename[:-8]
+    elif filename.endswith(".pdf"):
+        normalized_filename = filename
+        return normalized_filename
+    else:
+        base_name = filename
+    
+    normalized_filename = base_name + ".pdf"
+    return normalized_filename
 
 if __name__ == "__main__":
     main()
