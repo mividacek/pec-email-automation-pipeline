@@ -7,7 +7,8 @@ def main():
     df = load_excel_data(excel_path)
     attachments = load_attachment_filenames(attachments_path)
     normalized_attachments = normalize_attachment_filenames(attachments)
-    normalized_df = normalize_excel_filenames(df)
+    normalized_excel_filenames = normalize_excel_filenames(df)
+    flagged_excel_filenames = detect_filename_ambiguities(normalized_excel_filenames, df)
 
 def load_excel_data(excel_path: str) -> pd.DataFrame:
     """
@@ -63,31 +64,6 @@ def normalize_attachment_filenames(attachments: list[str]) -> list[str]:
         normalized_attachments.append(_normalize_pdf_extension(i))
     return normalized_attachments
 
-def _normalize_pdf_extension(filename: str) -> str:
-    """
-    Normalizes the extension of file names.
-
-    Args:
-        filename (str)
-            File name to normalize.
-
-    Returns:
-        normalized_filename (str)
-            Normalized file name.
-    """
-    if filename.endswith("..pdf"):
-        base_name = filename[:-5]
-    elif filename.endswith(".pdf.pdf"):
-        base_name = filename[:-8]
-    elif filename.endswith(".pdf"):
-        normalized_filename = filename
-        return normalized_filename
-    else:
-        base_name = filename
-    
-    normalized_filename = base_name + ".pdf"
-    return normalized_filename
-
 def normalize_excel_filenames(df: pd.DataFrame) -> dict[str, list[str]]:
     """
     Normalizes the filenames in excel df:
@@ -129,6 +105,67 @@ def normalize_excel_filenames(df: pd.DataFrame) -> dict[str, list[str]]:
         normalized_excel_filenames["Allegato 2"] = normalized_excel_filenames_2
 
     return normalized_excel_filenames
+
+def detect_filename_ambiguities(normalized_excel_filenames: dict[str, list[str]], df: pd.DataFrame) -> list[dict]:
+    """
+    Returns a list of Excel rows whose filenames containig system-breaking-characters.
+    Each detected issue is represented by a dictionary containing:
+    - row_index: row number starting from 0
+    - column: name of the column where the filename was found
+    - original_name: name before normalization
+    - normalized_name: name after normalization
+    - issue type: INVALID_CHARACTER
+
+    Args:
+        normalized_excel_filenames (dict[str, list[str]])
+            The values of the column "Allegato 1" and if "Allegato 2" exists and is not empty in a dictonary where the column name is the key and the values are lists of normalized file names.
+        df (pd.DataFrame) 
+            The loaded Excel workbook.
+    Returns
+        list[dict]:
+            A list of dictionaries describing every filename that contains a system-breakin-character.
+    """
+    system_breaking_chars = ["!", "#", "@", "&", ";", ":", "–", "—"]
+    detected_ambiguities = []
+    for column_name, filename_list in normalized_excel_filenames.items():
+        for row_index, attachment in enumerate(filename_list):
+            for character in system_breaking_chars:
+                if character in attachment:
+                    filename_dict = {}
+                    filename_dict["row_index"] = row_index
+                    filename_dict["column"] = column_name
+                    filename_dict["original_name"] = df.at[row_index, column_name]
+                    filename_dict["normalized_name"] = attachment
+                    filename_dict["issue_type"] = "INVALID_CHARACTER"
+                    detected_ambiguities.append(filename_dict)
+                    break
+
+    return detected_ambiguities
+
+def _normalize_pdf_extension(filename: str) -> str:
+    """
+    Normalizes the extension of file names.
+
+    Args:
+        filename (str)
+            File name to normalize.
+
+    Returns:
+        normalized_filename (str)
+            Normalized file name.
+    """
+    if filename.endswith("..pdf"):
+        base_name = filename[:-5]
+    elif filename.endswith(".pdf.pdf"):
+        base_name = filename[:-8]
+    elif filename.endswith(".pdf"):
+        normalized_filename = filename
+        return normalized_filename
+    else:
+        base_name = filename
+    
+    normalized_filename = base_name + ".pdf"
+    return normalized_filename
 
 def _normalize_excel_filename(filename: str) -> str:
     """
