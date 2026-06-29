@@ -5,15 +5,7 @@
 
 This project recreates a document-processing workflow inspired by a real administrative environment where data accuracy was critical.
 
-The current version generates synthetic datasets containing both valid and intentionally corrupted records. Future versions will add automated validation, cleaning, audit logging, and machine-learning assisted anomaly detection.
-
-The generator creates:
-
-* Company names
-* Italian VAT numbers
-* PEC email addresses
-* Attachment files
-* Excel database exports
+The current version includes the foundations of an automated validation pipeline and a synthetic data generator capable of producing both valid and intentionally corrupted records. Future versions will extend it with reconciliation, audit logging, and ML-assisted decision support.
 
 The dataset intentionally includes realistic data-quality issues such as malformed filenames, invalid email addresses, spacing problems, extension errors, forbidden characters, and mismatches between database records and physical files.
 
@@ -23,14 +15,15 @@ The dataset intentionally includes realistic data-quality issues such as malform
 
 This project is currently under active development.
 
-Version 1 focuses on synthetic data generation and automated testing, and simulation of document reconciliation scenarios.
+### Current progress:
 
-Future milestones include:
-
-- Validation pipeline
-- Data cleaning automation
-- Machine-learning assisted anomaly detection
-- Audit logging
+✔ Synthetic data generation
+✔ Automated testing
+✔ Validation pipeline foundation
+    - Excel schema validation
+    - Attachment loading
+    - Deterministic filename normalization
+    - Ambiguity detection
 
 ---
 
@@ -42,7 +35,18 @@ The original process involved validating sender email addresses, matching docume
 
 Because sensitive information was involved, the workflow required very high accuracy. The Excel automation I created at the time reduced manual work and helped prevent errors during data preparation.
 
-This Python implementation recreates that type of workflow using synthetic data and serves as the foundation for a future automated validation and cleaning pipeline.
+This Python implementation recreates that type of workflow using synthetic data and serves as the foundation for an automated validation and cleaning pipeline.
+
+---
+
+## Architecture
+
+The project is intentionally divided into two independent components:
+
+- **Synthetic data generator**, which creates realistic test datasets containing both valid and intentionally corrupted records.
+- **Validation pipeline**, which processes the generated data through deterministic validation, machine-learning assisted correction, reconciliation, and audit logging.
+
+This separation allows the generator to evolve independently from the validation logic while providing reproducible test scenarios.
 
 ---
 
@@ -50,16 +54,16 @@ This Python implementation recreates that type of workflow using synthetic data 
 
 The project is based on several real-world validation rules:
 
-* Sender email addresses should not contain leading or trailing spaces.
-* Invalid email addresses should be detected.
-* Codes or identifiers from document references should match attachment names.
-* Multiple attachment names may need to be joined into the same Excel cell.
-* Attachments must use the `.pdf` extension.
-* Malformed extensions such as `..pdf` or `.pdf.pdf` should be detected and corrected.
-* Forbidden filename characters should be detected.
-* Filename issues are corrected automatically when a safe correction is possible; otherwise they are flagged for manual review.
-* File paths copied from the attachment folder should match the records in the Excel file.
-* Invalid email addresses are detected and reported, but are not automatically corrected because the correct recipient cannot be determined safely.
+- Sender email addresses should not contain leading or trailing spaces.
+- Invalid email addresses should be detected.
+- Codes or identifiers from document references should match attachment names.
+- Multiple attachment names may need to be joined into the same Excel cell.
+- Attachments must use the `.pdf` extension.
+- Malformed extensions such as `..pdf` or `.pdf.pdf` should be detected and corrected.
+- Forbidden filename characters should be detected.
+- Filename issues are corrected automatically when a safe correction is possible; otherwise they are flagged for manual review.
+- File paths copied from the attachment folder should match the records in the Excel file.
+- Invalid email addresses are detected and reported, but are not automatically corrected because the correct recipient cannot be determined safely.
 
 Important note: the correct document name is stored inside the generated attachment file content. This reflects the real workflow, where the agent was expected to copy the same document name into both the file name and the Excel database, but manual copying could introduce mistakes.
 
@@ -94,64 +98,80 @@ This approach mirrors real-world business workflows where data can only be modif
 
 ## Features
 
-Current functionality includes:
+### Validation Pipeline
 
-* Synthetic company generation using Faker
-* Italian VAT number generation
-* PEC email generation
-* Physical PDF attachment generation
-* Excel export generation using Pandas
-* Controlled data corruption for testing purposes
-* Simulation of missing attachments
-* Simulation of orphan-attachments
-* Filesystem-safe filename generation
-* Unit testing with pytest
-* Integration testing of the complete generation workflow
+The validation pipeline consists of the following stages:
 
-Examples of intentionally generated anomalies include:
+```mermaid
+flowchart TD
+    A[Load Excel]
+    B[Load Attachments]
+    C[Deterministic Normalization]
+    D[Ambiguity Detection]
+    E[ML Filename Correction]
+    F[Deterministic Reconciliation]
+    G[ML Reconciliation]
+    H[Audit Log]
+    I[Tracciato.csv]
 
-* Invalid email formats
-* Malformed PDF extensions
-* Illegal filename characters
-* Leading and trailing spaces
-* Filename mismatches between Excel records and disk files
-* Attachments referenced in Excel but missing from disk
-* Attachments present on disk but missing from Excel
+    A --> B --> C --> D --> E --> F --> G --> H --> I
+```
 
+The audit log will document detected issues, automatic corrections, and records requiring manual review.
 
-## Synthetic Error Simulation
+#### Current pipeline functionality includes:
+
+Implemented:
+
+    - Load Excel workbook
+    - Excel schema validation
+    - Load attachment filenames
+    - Deterministic filename normalization
+    - Filename ambiguity detection
+
+In Progress:
+
+- Deterministic pipeline testing
+
+Planned:
+
+    - ML-assisted filename correction
+    - Deterministic filename reconciliation
+    - ML-assisted reconciliation
+    - Audit log
+    - Email validation
+    - Tracciato.csv generation
+
+### Current synthetic data generation functionality includes:
+
+- Synthetic company generation using Faker
+- Italian VAT number generation
+- PEC email generation
+- Physical PDF attachment generation
+- Excel export generation using Pandas
+- Controlled data corruption for testing purposes
+- Simulation of missing attachments
+- Simulation of orphan-attachments
+- Filesystem-safe filename generation
+- Unit testing with pytest
+- Integration testing of the complete generation workflow
+
+#### Synthetic Error Simulation
 
 The generator intentionally creates realistic inconsistencies commonly found in document-processing workflows.
 
 Examples include:
 
-* Invalid PEC email formats
-* Malformed PDF extensions
-* Illegal filename characters
-* Filesystem-safe filename normalization
-* Missing attachments referenced in Excel
-* Orphan attachments present only on disk
-* Filename discrepancies between Excel records and physical documents
+- Invalid PEC email formats
+- Malformed PDF extensions
+- Illegal filename characters
+- Leading and trailing spaces
+- Filesystem-safe filename normalization
+- Missing attachments referenced in Excel
+- Orphan attachments present only on disk
+- Filename discrepancies between Excel records and physical documents
 
 These anomalies provide realistic input data for the future validation and machine-learning pipeline.
-
----
-
-## Planned Pipeline
-
-The future pipeline will include:
-
-* Data validation
-* Filename cleaning
-* Email validation
-* Attachment matching
-* PDF extension correction
-* Manual review flags
-* Audit log generation
-* Machine-learning assisted anomaly detection
-* Machine-learning assisted data cleaning
-
-The audit log will document detected issues, automatic corrections, and records requiring manual review.
 
 ---
 
@@ -159,8 +179,11 @@ The audit log will document detected issues, automatic corrections, and records 
 
 ```text
 generate_mock_data.py
+pipeline.py
 test_generate_mock_data.py
 README.md
+docs/
+    pipeline_design.md
 doc/
 richiesta.xlsx
 ```
@@ -169,11 +192,11 @@ richiesta.xlsx
 
 ## Technologies Used
 
-* Python
-* Faker
-* Pandas
-* openpyxl
-* pytest
+- Python
+- Faker
+- Pandas
+- openpyxl
+- pytest
 
 ---
 
@@ -183,10 +206,10 @@ The project is currently developed and tested in a Conda environment.
 
 Required packages:
 
-* Faker
-* pandas
-* openpyxl
-* pytest
+- Faker
+- pandas
+- openpyxl
+- pytest
 
 Example installation using Conda:
 
@@ -207,25 +230,25 @@ The project contains both unit tests and integration tests.
 
 Unit tests validate individual business rules, including:
 
-* Configuration generation
-* Email normalization
-* Company name generation
-* File naming logic
-* Corrupted extension generation
-* Filename consistency checks
-* Attachment file writing helper
-* Orphan attachment file generation helper
+- Configuration generation
+- Email normalization
+- Company name generation
+- File naming logic
+- Corrupted extension generation
+- Filename consistency checks
+- Attachment file writing helper
+- Orphan attachment file generation helper
 
 ### Integration Tests
 
 Integration tests validate the complete workflow, including:
 
-* Environment generation
-* Attachment creation
-* Excel export generation
-* Output schema validation
-* Required field validation
-* Attachment reconciliation scenrarios
+- Environment generation
+- Attachment creation
+- Excel export generation
+- Output schema validation
+- Required field validation
+- Attachment reconciliation scenarios
 
 ---
 
@@ -265,38 +288,28 @@ A separate deterministic test for randomly generated missing attachments is not 
 
 ---
 
-## Fixed issues
-The generator creates both valid and intentionally malformed records for testing data-cleaning pipelines. Generated attachment filenames are automatically sanitized for filesystem compatibility while preserving discrepancies between Excel records and physical files.
----
+## ## Future Development
 
-## Future Development
+The current version focuses on synthetic data generation, automated testing, and the foundations of the validation pipeline.
 
-Planned improvements include:
-
-* Attachment reconciliation between Excel records and disk files
-* Automated validation pipeline
-* Audit log generation
-* Data quality reporting
-* Attachment matching automation
-* Machine-learning assisted anomaly detection
-* Machine-learning assisted data cleaning
-
-The current version focuses on synthetic data generation and automated testing. Machine-learning components will be introduced in future iterations after the validation and cleaning pipeline is completed.
-
+Future development will focus on reconciliation, audit logging, and machine-learning assisted decision support.
 ---
 
 ## Lessons Learned
 
 This project provided practical experience with:
 
-* Python project structure
-* Synthetic data generation
-* File system operations
-* Pandas workflows
-* Automated testing with pytest
-* Integration testing
-* Debugging edge cases caused by random data generation
-* Designing maintainable helper functions
-* Separate business logic from file generation
+- Python project structure
+- Synthetic data generation
+- File system operations
+- Pandas workflows
+- Automated testing with pytest
+- Integration testing
+- Debugging edge cases caused by random data generation
+- Designing maintainable helper functions
+- Separate business logic from file generation
+- Designing modular data-validation pipelines
+
+I also learned that designing the validation pipeline requires separating deterministic business rules from ambiguous cases suitable for ML-assisted decision making.
 
 One of the most valuable findings was identifying a filesystem bug through integration testing, demonstrating how automated tests can uncover issues that are difficult to detect through manual testing alone.
