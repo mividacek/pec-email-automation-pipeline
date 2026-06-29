@@ -89,30 +89,65 @@ def test_normalize_attachment_filenames_normalizes_list():
 
 def test_normalize_excel_filenames_one_attachment():
     accent_map, _ = get_system_configurations()
-    data_1 = {
-        "Azienda" : ["Rossì S.p.A."],
-        "VAT" : ["IT01234567891"],
-        "Email" : ["rossi@pec.it"],
-        "Allegato 1" : ["filename..pdf"],
-    }
-    df_1 = pd.DataFrame(data_1)
+
+    df_1 = _make_excel_df(["filename..pdf"])
 
     assert normalize_excel_filenames(df_1, accent_map) == {
         "Allegato 1" : ["filename.pdf"],
     }
 
-    data_2 = {
-        "Azienda" : ["Rossì S.p.A."],
-        "VAT" : ["IT01234567891"],
-        "Email" : ["rossi@pec.it"],
-        "Allegato 1" : ["filename..pdf"],
-        "Allegato 2" : [None],
-    }
-    df_2 = pd.DataFrame(data_2)
+    df_2 = _make_excel_df(["filename.pdf"],[None])
 
     assert normalize_excel_filenames(df_2, accent_map) == {
         "Allegato 1" : ["filename.pdf"],
     }
+
+    df_3 = _make_excel_df(["filename.pdf"], [""])
+
+    assert normalize_excel_filenames(df_3, accent_map) == {
+        "Allegato 1" : ["filename.pdf"],
+    }
+
+    df_4 = _make_excel_df(["first1.pdf", "first2.pdf"], ["second.pdf", ""])
+
+    assert normalize_excel_filenames(df_4, accent_map) == {
+        "Allegato 1": [
+            "first1.pdf",
+            "first2.pdf",
+        ],
+        "Allegato 2": [
+            "second.pdf",
+            "",
+        ],
+    }
+
+    df_5 = _make_excel_df(["first1.pdf", "first2.pdf"], ["second.pdf", None])
+
+    assert normalize_excel_filenames(df_5, accent_map) == {
+        "Allegato 1": [
+            "first1.pdf",
+            "first2.pdf",
+        ],
+        "Allegato 2": [
+            "second.pdf",
+            "",
+        ],
+    }
+
+def _make_excel_df(allegato_1, allegato_2=None):
+    row_count = len(allegato_1)
+    
+    data = {
+        "Azienda": ["Rossi"] * row_count,
+        "VAT": ["IT1234567810"] * row_count,
+        "Email": ["rossi@pec.it"] * row_count,
+        "Allegato 1": allegato_1,
+    }
+
+    if allegato_2 is not None:
+        data["Allegato 2"] = allegato_2
+
+    return pd.DataFrame(data)
 
 
 def test_normalize_excel_filenames_two_attachments():

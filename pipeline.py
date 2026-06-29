@@ -124,16 +124,16 @@ def normalize_excel_filenames(df: pd.DataFrame, accent_map: dict[str, str]) -> d
 
     normalized_excel_filenames["Allegato 1"] = normalized_excel_filenames_1
 
-    if "Allegato 2" in df and not df["Allegato 2"].isna().all():
+    if "Allegato 2" in df and not df["Allegato 2"].fillna("").eq("").all():
         normalized_excel_filenames_2 = []
         excel_filenames_2 = df["Allegato 2"].fillna("").to_list()
 
         for i in excel_filenames_2:
-            if i != "":
+            if i == "":
+                normalized_excel_filenames_2.append(i)
+            else:
                 j = _normalize_excel_filename(i, accent_map)
                 normalized_excel_filenames_2.append(j)
-            else:
-                normalized_excel_filenames_2.append(i)
         
         normalized_excel_filenames["Allegato 2"] = normalized_excel_filenames_2
 
