@@ -223,7 +223,7 @@ def _normalize_excel_filename(filename: str, accent_map: dict[str, str]) -> str:
     normalized_filename = filename.strip()
     
     if normalized_filename.startswith('"') and normalized_filename.endswith('"'):
-        normalized_filename = normalized_filename[1:-1]
+        normalized_filename = normalized_filename[1:-1].strip()
     
     for target, replacement in accent_map.items():
         normalized_filename = normalized_filename.replace(target, replacement)
