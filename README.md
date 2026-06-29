@@ -128,10 +128,11 @@ Implemented:
     - Load attachment filenames
     - Deterministic filename normalization
     - Filename ambiguity detection
+    - Deterministic pipeline testing
 
 In Progress:
 
-- Deterministic pipeline testing
+    - ML-assisted filename correction
 
 Planned:
 
@@ -180,7 +181,9 @@ These anomalies provide realistic input data for the future validation and machi
 ```text
 generate_mock_data.py
 pipeline.py
-test_generate_mock_data.py
+tests/
+    test_generate_mock_data.py
+    test_pipeline.py
 README.md
 docs/
     pipeline_design.md
@@ -269,18 +272,20 @@ pytest -v
 For coverage reporting:
 
 ```bash
-pytest --cov=generate_mock_data
-```
+pytest --cov=generate_mock_data --cov=pipeline --cov-report=term-missing```
 ---
 
 ## Quality Assurance
 
 Current test suite:
 
-- 25 automated tests
+- 44 automated tests
 - Unit tests
 - Integration tests
-- 95% code coverage
+- Workflow tests
+- 93% overall code coverage
+- 95% coverage (generate_mock_data.py)
+- 89% coverage (pipeline.py)
 
 The test suite includes a deterministic integration test for orphan attachments, verifying that files can exist on disk without a corresponding Excel record.
 
