@@ -6,9 +6,40 @@ def main():
     attachments_path = "doc/"
     df = load_excel_data(excel_path)
     attachments = load_attachment_filenames(attachments_path)
+    accent_map, system_breaking_chars = get_system_configurations()
     normalized_attachments = normalize_attachment_filenames(attachments)
-    normalized_excel_filenames = normalize_excel_filenames(df)
-    flagged_excel_filenames = detect_filename_ambiguities(normalized_excel_filenames, df)
+    normalized_excel_filenames = normalize_excel_filenames(df, accent_map)
+    flagged_excel_filenames = detect_filename_ambiguities(normalized_excel_filenames, df, system_breaking_chars)
+
+def get_system_configurations() -> tuple[dict[str, str], list[str]]:
+    """
+    Returns shared normalization and validation configuration used by the pipeline.
+
+    Returns:
+        accent_map (dict[str, str])
+            Dictionary of accented characters to ASCII equivalents.
+        system_breaking_chars (list[str])
+            List of characters that require ambiguity detection.
+    """
+    accent_map = {
+            "à": "a",
+            "è": "e",
+            "é": "e",
+            "ì": "i",
+            "ò": "o",
+            "ù": "u",
+            "À": "A",
+            "È": "E",
+            "É": "E",
+            "Ì": "I",
+            "Ò": "O",
+            "Ù": "U",
+        }
+    
+    system_breaking_chars = ["!", "#", "@", "&", ";", ":", "–", "—"]
+
+    return accent_map, system_breaking_chars
+
 
 def load_excel_data(excel_path: str) -> pd.DataFrame:
     """
@@ -64,7 +95,7 @@ def normalize_attachment_filenames(attachments: list[str]) -> list[str]:
         normalized_attachments.append(_normalize_pdf_extension(i))
     return normalized_attachments
 
-def normalize_excel_filenames(df: pd.DataFrame) -> dict[str, list[str]]:
+def normalize_excel_filenames(df: pd.DataFrame, accent_map: dict[str, str]) -> dict[str, list[str]]:
     """
     Normalizes the filenames in excel df:
     - no trailing spaces
@@ -75,10 +106,12 @@ def normalize_excel_filenames(df: pd.DataFrame) -> dict[str, list[str]]:
     Args:
         df (pandas.DataFrame)
             The loaded Excel workbook.
+        accent_map (dict[str, str])
+            Dictionary of accented characters to ASCII equivalents.
     
     Returns:
         dict[str, list[str]]
-            The values or the column "Allegato 1" and if "Allegato 2" exists and is not empty in a dictonary where the column name is the key and the values are lists of normalized file names.
+            The values or the column "Allegato 1" and if "Allegato 2" exists and is not empty in a dictionary where the column name is the key and the values are lists of normalized file names.
     """
     normalized_excel_filenames = {}
     normalized_excel_filenames_1 = []
@@ -86,7 +119,7 @@ def normalize_excel_filenames(df: pd.DataFrame) -> dict[str, list[str]]:
     excel_filenames_1 = df["Allegato 1"].to_list()
     
     for i in excel_filenames_1:
-        j = _normalize_excel_filename(i)
+        j = _normalize_excel_filename(i, accent_map)
         normalized_excel_filenames_1.append(j)
 
     normalized_excel_filenames["Allegato 1"] = normalized_excel_filenames_1
@@ -97,7 +130,7 @@ def normalize_excel_filenames(df: pd.DataFrame) -> dict[str, list[str]]:
 
         for i in excel_filenames_2:
             if i != "":
-                j = _normalize_excel_filename(i)
+                j = _normalize_excel_filename(i, accent_map)
                 normalized_excel_filenames_2.append(j)
             else:
                 normalized_excel_filenames_2.append(i)
@@ -106,9 +139,9 @@ def normalize_excel_filenames(df: pd.DataFrame) -> dict[str, list[str]]:
 
     return normalized_excel_filenames
 
-def detect_filename_ambiguities(normalized_excel_filenames: dict[str, list[str]], df: pd.DataFrame) -> list[dict]:
+def detect_filename_ambiguities(normalized_excel_filenames: dict[str, list[str]], df: pd.DataFrame, system_breaking_chars: list[str]) -> list[dict]:
     """
-    Returns a list of Excel rows whose filenames containig system-breaking-characters.
+    Returns a list of Excel rows whose filenames containing system-breaking-characters.
     Each detected issue is represented by a dictionary containing:
     - row_index: row number starting from 0
     - column: name of the column where the filename was found
@@ -118,14 +151,16 @@ def detect_filename_ambiguities(normalized_excel_filenames: dict[str, list[str]]
 
     Args:
         normalized_excel_filenames (dict[str, list[str]])
-            The values of the column "Allegato 1" and if "Allegato 2" exists and is not empty in a dictonary where the column name is the key and the values are lists of normalized file names.
+            The values of the column "Allegato 1" and if "Allegato 2" exists and is not empty in a dictionary where the column name is the key and the values are lists of normalized file names.
         df (pd.DataFrame) 
             The loaded Excel workbook.
-    Returns
+        system_breaking_chars (list[str])
+            List of characters that require ambiguity detection.
+
+    Returns:
         list[dict]:
-            A list of dictionaries describing every filename that contains a system-breakin-character.
+            A list of dictionaries describing every filename that contains a system-breaking character.
     """
-    system_breaking_chars = ["!", "#", "@", "&", ";", ":", "–", "—"]
     detected_ambiguities = []
     for column_name, filename_list in normalized_excel_filenames.items():
         for row_index, attachment in enumerate(filename_list):
@@ -167,7 +202,7 @@ def _normalize_pdf_extension(filename: str) -> str:
     normalized_filename = base_name + ".pdf"
     return normalized_filename
 
-def _normalize_excel_filename(filename: str) -> str:
+def _normalize_excel_filename(filename: str, accent_map: dict[str, str]) -> str:
     """
     Normalizes the filename:
     - no trailing spaces
@@ -178,26 +213,13 @@ def _normalize_excel_filename(filename: str) -> str:
     Args:
         filename (str)
             String representing the filename to normalize.
+        accent_map: dict[str, str]    
+            Dictionary of accented characters to ASCII equivalents.
     
     Returns:
         normalized_filename (str)
             The normalized filename string.
     """
-    accent_map = {
-            "à": "a",
-            "è": "e",
-            "é": "e",
-            "ì": "i",
-            "ò": "o",
-            "ù": "u",
-            "À": "A",
-            "È": "E",
-            "É": "E",
-            "Ì": "I",
-            "Ò": "O",
-            "Ù": "U",
-        }
-    
     normalized_filename = filename.strip()
     
     if normalized_filename.startswith('"') and normalized_filename.endswith('"'):
@@ -208,7 +230,7 @@ def _normalize_excel_filename(filename: str) -> str:
     
     normalized_filename = _normalize_pdf_extension(normalized_filename)
 
-    return(normalized_filename)
+    return normalized_filename
 
 
 if __name__ == "__main__":
