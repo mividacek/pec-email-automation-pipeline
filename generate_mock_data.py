@@ -45,7 +45,7 @@ def generate_environment(num_records: int) -> None:
     Returns:
         None
     """
-    attachments_dir = "./doc"
+    attachments_dir = "/Users/mivi/Documents/Projects/data/generated/doc"
 
     if os.path.exists(attachments_dir):
         shutil.rmtree(attachments_dir)
@@ -128,7 +128,7 @@ def generate_environment(num_records: int) -> None:
     print("\n--- Saving records to Excel database ---")
     df = pd.DataFrame(transaction_records)
 
-    excel_path = "./richiesta.xlsx"
+    excel_path = "/Users/mivi/Documents/Projects/data/generated/richiesta.xlsx"
     df.to_excel(excel_path, index=False)
     print(f"Successfully generated Excel database at: {excel_path}\n")
 
