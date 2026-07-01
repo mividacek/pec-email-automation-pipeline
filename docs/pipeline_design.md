@@ -2,46 +2,162 @@
 
 ## Goal
 
-The pipeline validates document-processing data, automatically corrects deterministic issues, optionally provides ML-assisted decision support for ambiguous cases, identifies records requiring manual review, and prepares validated data for downstream business processes.
+The validation pipeline prepares document-processing data for downstream
+processing by:
 
-## Input
+- normalizing deterministic filename inconsistencies
+- detecting rule-based validation issues
+- creating a complete audit trail
+- exporting a validated dataset for subsequent pipelines
+---
+## Workflow
 
-Generated Excel workbook (richiesta.xlsx)
+richiesta.xlsx        doc/
+       │               │
+       └──────┬────────┘
+              │
+      Validation Pipeline
+              │
+      ├── audit_log.csv
+      └── validated_data.csv
+              │
+              ▼
+        ML Validation
+              │
+              ▼
+        Reconciliation
+              │
+              ▼
+         Tracciato.csv
 
-Generated attachment directory (doc/)
+The project is intentionally divided into independent pipelines to separate deterministic validation, ML-assisted decision support, and document reconciliation.
 
-Business validation rules
+---
 
-## Pipeline Stages
+## Input Files
 
-1. Load Excel workbook
-2. Scan attachment directory
-3. Normalize data
-4. Validate records
-5. Reconcile Excel and attachments
-6. Classify detected issues
-7. Apply deterministic corrections
-8. ML-assisted recommendations (optional)
-9. Manual review (if required)
-10. Generate output files
-11. Generate audit log
+data/
+└── generated/
+    ├── richiesta.xlsx
+    └── doc/
+        ├── document1.pdf
+        ├── document2.pdf
+        └── ...
 
-## Expected Output
+---
 
-### Primary Outputs
-* corrected attachment filenames
-* corrected Excel workbook
-* audit log
+## Pipeline 1 – Validation
 
-### Secondary Outputs
-* Tracciato.csv
-* validation summary
-* statistics
+### Stage 1 – Load data
 
-## Decision Strategy
+- Load the Excel workbook.
+- Scan the attachment directory.
 
-1. Apply deterministic business rules.
-2. If the outcome is certain, continue.
-3. If the outcome is ambiguous, consult the ML assistant (if available).
-4. If confidence is insufficient, require manual review.
-5. Only validated records are included in Tracciato.csv.
+### Stage 2 – Normalize filenames
+
+Normalize Excel filenames by:
+
+- removing trailing spaces
+- removing surrounding quotes
+- replacing accented characters
+- normalizing PDF extensions
+
+Normalize attachment filenames by:
+
+- normalizing PDF extensions
+
+Every performed normalization is recorded for auditing.
+
+### Stage 3 – Audit logging
+
+Generate `audit_log.csv` containing:
+
+- row index
+- source
+- column
+- original filename columns:
+    - allegato_1_original
+    - allegato_2_original
+- normalized filename columns:
+    - allegato_1_normalized
+    - allegato_2_normalized
+- performed normalization actions
+
+### Stage 4 – Rule-based validation
+
+Detect deterministic validation issues, including:
+
+- invalid filename characters
+
+### Stage 5 – Generate validated dataset
+
+Export `validated_data.csv` containing:
+
+- row index
+- original business data:
+    - company name
+    - company VAT number
+    - company email
+- original filename columns:
+    - allegato 1 original
+    - allegato 2 original
+- normalized filename columns:
+    - allegato 1 normalized
+    - allegato 2 normalized
+- detected validation issues
+
+---
+
+## Future Pipeline 2 – ML Validation
+
+Purpose:
+
+- analyze ambiguous validation cases
+- provide confidence scores
+- recommend corrections
+- reduce manual review workload
+
+Input:
+
+- `validated_data.csv`
+
+Output:
+
+- ML recommendations
+- confidence scores
+
+---
+
+## Future Pipeline 3 – Reconciliation
+
+Purpose:
+
+- compare validated Excel filenames with attachment filenames
+- identify missing or mismatched documents
+- generate reconciliation reports
+
+Input:
+
+- validated_data.csv
+- normalized attachment metadata
+
+Output:
+
+- reconciliation report
+
+---
+
+## Output Files
+
+### Current Pipeline
+
+data/
+└── processed/
+    ├── audit_log.csv
+    └── validated_data.csv
+
+### Future Pipelines
+
+- reconciliation report
+- business export (`Tracciato.csv`)
+- validation statistics
