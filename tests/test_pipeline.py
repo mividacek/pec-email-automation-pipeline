@@ -44,29 +44,51 @@ def test_normalize_pdf_extension_adds_missing_extension():
 
 def test_normalize_excel_filename_removes_trailing_spaces():
     accent_map, _ = get_system_configurations()
+    normalized_filename, actions = _normalize_excel_filename("filename.pdf  ", accent_map)
 
-    assert _normalize_excel_filename("filename.pdf  ", accent_map) == "filename.pdf"
+    assert normalized_filename == "filename.pdf"
+    assert actions == ["TRAILING_SPACES_REMOVED"]
 
 def test_normalize_excel_filename_removes_quotes():
     accent_map, _ = get_system_configurations()
+    normalized_filename, actions = _normalize_excel_filename('"filename.pdf"', accent_map)
 
-    assert _normalize_excel_filename('"filename.pdf"', accent_map) == "filename.pdf"
+    assert normalized_filename == "filename.pdf"
+    assert actions == ["QUOTES_REMOVED"]
+
+    normalized_filename, actions = _normalize_excel_filename('"filename.pdf  "', accent_map)
+    assert normalized_filename == "filename.pdf"
+    assert actions == ["QUOTES_REMOVED","TRAILING_SPACES_INSIDE_QUOTES_REMOVED"]
 
 def test_normalize_excel_filename_fixes_accented_chars():
     accent_map, _ = get_system_configurations()
+    normalized_filename, actions = _normalize_excel_filename("fìlènàmé.pdf", accent_map)
 
-    assert _normalize_excel_filename("fìlènàmé.pdf", accent_map) == "filename.pdf"
-    assert _normalize_excel_filename("FÌLÈNÀMÉ.pdf", accent_map) == "FILENAME.pdf"
+    assert normalized_filename == "filename.pdf"
+    assert actions == ["ACCENTS_REMOVED"]
 
+    normalized_filename, actions = _normalize_excel_filename("FÌLÈNÀMÉ.pdf", accent_map)
+    assert normalized_filename == "FILENAME.pdf"
+    assert actions == ["ACCENTS_REMOVED"]
 
 def test_normalize_excel_filename_normalizes_malformed_pdf_extensions():
     accent_map, _ = get_system_configurations()
 
-    assert _normalize_excel_filename("filename..pdf", accent_map) == "filename.pdf"
-    assert _normalize_excel_filename("filename.pdf.pdf", accent_map) == "filename.pdf"
-    assert _normalize_excel_filename("filename.pdf", accent_map) == "filename.pdf"
-    assert _normalize_excel_filename("filename", accent_map) == "filename.pdf"
+    normalized_filename, actions = _normalize_excel_filename("filename..pdf", accent_map)
+    assert normalized_filename == "filename.pdf"
+    assert actions == ["NORMALIZED_PDF_EXTENSION"]
+    
+    normalized_filename, actions = _normalize_excel_filename("filename.pdf.pdf", accent_map)
+    assert normalized_filename == "filename.pdf"
+    assert actions == ["NORMALIZED_PDF_EXTENSION"]
 
+    normalized_filename, actions = _normalize_excel_filename("filename.pdf", accent_map)
+    assert normalized_filename == "filename.pdf"
+    assert actions == []
+
+    normalized_filename, actions = _normalize_excel_filename("filename", accent_map)
+    assert normalized_filename == "filename.pdf"
+    assert actions == ["NORMALIZED_PDF_EXTENSION"]
 
 # Attachment disk filename normalization tests
 
@@ -75,14 +97,43 @@ def test_normalize_attachment_filenames_normalizes_list():
         "a.pdf",
         "b..pdf",
         "c.pdf.pdf",
-        "d"
+        "d",
     ]
+    
+    normalized_filenames, normalization_log = normalize_attachment_filenames(raw_filenames)
 
-    assert normalize_attachment_filenames(raw_filenames) == [
+    assert normalized_filenames == [
         "a.pdf",
         "b.pdf",
         "c.pdf",
-        "d.pdf"
+        "d.pdf",
+    ]
+
+    assert normalization_log == [
+        {
+            "row_index": None,
+            "source": "Disk",
+            "column": "Cartella doc",
+            "original_name": "b..pdf",
+            "normalized_name": "b.pdf",
+            "actions": ["NORMALIZED_PDF_EXTENSION"],
+        },
+        {
+            "row_index": None,
+            "source": "Disk",
+            "column": "Cartella doc",
+            "original_name": "c.pdf.pdf",
+            "normalized_name": "c.pdf",
+            "actions": ["NORMALIZED_PDF_EXTENSION"],
+        },
+        {
+            "row_index": None,
+            "source": "Disk",
+            "column": "Cartella doc",
+            "original_name": "d",
+            "normalized_name": "d.pdf",
+            "actions": ["NORMALIZED_PDF_EXTENSION"],
+        },
     ]
 
 # Normalize excel filenames outputs a dictionary
@@ -92,25 +143,60 @@ def test_normalize_excel_filenames_one_attachment():
 
     df_1 = _make_excel_df(["filename..pdf"])
 
-    assert normalize_excel_filenames(df_1, accent_map) == {
-        "Allegato 1" : ["filename.pdf"],
+    normalized_excel_filenames, normalization_log = normalize_excel_filenames(
+        df_1,
+        accent_map,
+    )
+
+    assert normalized_excel_filenames == {
+        "Allegato 1": ["filename.pdf"],
     }
 
-    df_2 = _make_excel_df(["filename.pdf"],[None])
+    assert normalization_log == [
+        {
+            "row_index": 0,
+            "source": "Excel",
+            "column": "Allegato 1",
+            "original_name": "filename..pdf",
+            "normalized_name": "filename.pdf",
+            "actions": ["NORMALIZED_PDF_EXTENSION"],
+        }
+    ]
 
-    assert normalize_excel_filenames(df_2, accent_map) == {
-        "Allegato 1" : ["filename.pdf"],
+    df_2 = _make_excel_df(["filename.pdf"], [None])
+
+    normalized_excel_filenames, normalization_log = normalize_excel_filenames(
+        df_2,
+        accent_map,
+    )
+
+    assert normalized_excel_filenames == {
+        "Allegato 1": ["filename.pdf"],
     }
+
+    assert normalization_log == []
 
     df_3 = _make_excel_df(["filename.pdf"], [""])
 
-    assert normalize_excel_filenames(df_3, accent_map) == {
-        "Allegato 1" : ["filename.pdf"],
+    normalized_excel_filenames, normalization_log = normalize_excel_filenames(
+        df_3,
+        accent_map,
+    )
+
+    assert normalized_excel_filenames == {
+        "Allegato 1": ["filename.pdf"],
     }
+
+    assert normalization_log == []
 
     df_4 = _make_excel_df(["first1.pdf", "first2.pdf"], ["second.pdf", ""])
 
-    assert normalize_excel_filenames(df_4, accent_map) == {
+    normalized_excel_filenames, normalization_log = normalize_excel_filenames(
+        df_4,
+        accent_map,
+    )
+
+    assert normalized_excel_filenames == {
         "Allegato 1": [
             "first1.pdf",
             "first2.pdf",
@@ -120,10 +206,17 @@ def test_normalize_excel_filenames_one_attachment():
             "",
         ],
     }
+
+    assert normalization_log == []
 
     df_5 = _make_excel_df(["first1.pdf", "first2.pdf"], ["second.pdf", None])
 
-    assert normalize_excel_filenames(df_5, accent_map) == {
+    normalized_excel_filenames, normalization_log = normalize_excel_filenames(
+        df_5,
+        accent_map,
+    )
+
+    assert normalized_excel_filenames == {
         "Allegato 1": [
             "first1.pdf",
             "first2.pdf",
@@ -134,9 +227,12 @@ def test_normalize_excel_filenames_one_attachment():
         ],
     }
 
+    assert normalization_log == []
+
+
 def _make_excel_df(allegato_1, allegato_2=None):
     row_count = len(allegato_1)
-    
+
     data = {
         "Azienda": ["Rossi"] * row_count,
         "VAT": ["IT1234567810"] * row_count,
@@ -149,65 +245,96 @@ def _make_excel_df(allegato_1, allegato_2=None):
 
     return pd.DataFrame(data)
 
-
 def test_normalize_excel_filenames_two_attachments():
     accent_map, _ = get_system_configurations()
+
     data = {
-        "Azienda" : ["Bianchì S.p.A."],
-        "VAT" : ["IT01234567890"],
-        "Email" : ["bianchi@pec.it"],
-        "Allegato 1" : ["filename.pdf"],
-        "Allegato 2" : ["filename.pdf.pdf"],
+        "Azienda": ["Bianchì S.p.A."],
+        "VAT": ["IT01234567890"],
+        "Email": ["bianchi@pec.it"],
+        "Allegato 1": ["filename.pdf"],
+        "Allegato 2": ["filename.pdf.pdf"],
     }
 
     df = pd.DataFrame(data)
 
-    assert normalize_excel_filenames(df, accent_map) == {
-        "Allegato 1" : ["filename.pdf"],
-        "Allegato 2" : ["filename.pdf"],
+    normalized_excel_filenames, normalization_log = normalize_excel_filenames(
+        df,
+        accent_map,
+    )
+
+    assert normalized_excel_filenames == {
+        "Allegato 1": ["filename.pdf"],
+        "Allegato 2": ["filename.pdf"],
     }
+
+    assert normalization_log == [
+        {
+            "row_index": 0,
+            "source": "Excel",
+            "column": "Allegato 2",
+            "original_name": "filename.pdf.pdf",
+            "normalized_name": "filename.pdf",
+            "actions": ["NORMALIZED_PDF_EXTENSION"],
+        }
+    ]
 
 
 # Detect filename ambiguities outputs
 
 def test_detect_filename_ambiguities_positive():
     _, system_breaking_chars = get_system_configurations()
-    normalized_excel_filenames = {"Allegato 1": ["Accordo per Rossi ! IT01234567891.pdf"]}
+
+    normalized_excel_filenames = {
+        "Allegato 1": ["Accordo per Rossi ! IT01234567891.pdf"]
+    }
+
     data = {
-        "Azienda" : ["Rossi S.p.A"],
-        "VAT" : ["IT01234567891"],
-        "Email" : ["rossi@pec.it"],
-        "Allegato 1" : ["Accordo per Rossi ! IT01234567891.pdf"],
-        "Allegato 2" : ["Avviso per Rossi - IT01234567891.pdf"],
+        "Azienda": ["Rossi S.p.A"],
+        "VAT": ["IT01234567891"],
+        "Email": ["rossi@pec.it"],
+        "Allegato 1": ["Accordo per Rossi ! IT01234567891.pdf"],
+        "Allegato 2": ["Avviso per Rossi - IT01234567891.pdf"],
     }
 
     df = pd.DataFrame(data)
-    assert detect_filename_ambiguities(normalized_excel_filenames, df, system_breaking_chars) == [
+
+    assert detect_filename_ambiguities(
+        normalized_excel_filenames,
+        df,
+        system_breaking_chars,
+    ) == [
         {
             "row_index": 0,
             "column": "Allegato 1",
             "original_name": "Accordo per Rossi ! IT01234567891.pdf",
             "normalized_name": "Accordo per Rossi ! IT01234567891.pdf",
-            "issue_type": "INVALID_CHARACTER",
+            "issue_type": ["INVALID_CHARACTER"],
         }
     ]
 
 def test_detect_filename_ambiguities_negative():
     _, system_breaking_chars = get_system_configurations()
 
-    normalized_excel_filenames = {"Allegato 1": ["Accordo per Bianchi - IT01234567890.pdf"]}
+    normalized_excel_filenames = {
+        "Allegato 1": ["Accordo per Bianchi - IT01234567890.pdf"]
+    }
 
     data = {
-        "Azienda" : ["Bianchi S.p.A"],
-        "VAT" : ["IT01234567890"],
-        "Email" : ["bianchi@pec.it"],
-        "Allegato 1" : ["Accordo per Bianchi - IT01234567890.pdf"],
-        "Allegato 2" : ["Avviso per Bianchi - IT01234567890.pdf"],
+        "Azienda": ["Bianchi S.p.A"],
+        "VAT": ["IT01234567890"],
+        "Email": ["bianchi@pec.it"],
+        "Allegato 1": ["Accordo per Bianchi - IT01234567890.pdf"],
+        "Allegato 2": ["Avviso per Bianchi - IT01234567890.pdf"],
     }
 
     df = pd.DataFrame(data)
 
-    assert detect_filename_ambiguities(normalized_excel_filenames, df, system_breaking_chars) == []
+    assert detect_filename_ambiguities(
+        normalized_excel_filenames,
+        df,
+        system_breaking_chars,
+    ) == []
 
 # ==========================
 # LOADING TESTS
@@ -275,8 +402,51 @@ def test_load_attachment_filenames_no_files():
 def test_normalize_excel_filename_combined_normalization():
     accent_map, _ = get_system_configurations()
 
-    assert _normalize_excel_filename('"fìlènàmé..pdf "', accent_map) == "filename.pdf"
-    assert _normalize_excel_filename('"fìlènàmé.pdf.pdf "', accent_map) == "filename.pdf"
-    assert _normalize_excel_filename('"fìlènàmé.pdf "', accent_map) == "filename.pdf"
-    assert _normalize_excel_filename('"fìlènàmé "', accent_map) == "filename.pdf"
-    assert _normalize_excel_filename("filename.pdf", accent_map) == "filename.pdf"
+    normalized_filename, actions = _normalize_excel_filename(
+        '"fìlènàmé..pdf "', accent_map
+    )
+    assert normalized_filename == "filename.pdf"
+    assert actions == [
+        "QUOTES_REMOVED",
+        "TRAILING_SPACES_INSIDE_QUOTES_REMOVED",
+        "ACCENTS_REMOVED",
+        "NORMALIZED_PDF_EXTENSION",
+    ]
+
+    normalized_filename, actions = _normalize_excel_filename(
+        '"fìlènàmé.pdf.pdf "', accent_map
+    )
+    assert normalized_filename == "filename.pdf"
+    assert actions == [
+        "QUOTES_REMOVED",
+        "TRAILING_SPACES_INSIDE_QUOTES_REMOVED",
+        "ACCENTS_REMOVED",
+        "NORMALIZED_PDF_EXTENSION",
+    ]
+
+    normalized_filename, actions = _normalize_excel_filename(
+        '"fìlènàmé.pdf "', accent_map
+    )
+    assert normalized_filename == "filename.pdf"
+    assert actions == [
+        "QUOTES_REMOVED",
+        "TRAILING_SPACES_INSIDE_QUOTES_REMOVED",
+        "ACCENTS_REMOVED",
+    ]
+
+    normalized_filename, actions = _normalize_excel_filename(
+        '"fìlènàmé "', accent_map
+    )
+    assert normalized_filename == "filename.pdf"
+    assert actions == [
+        "QUOTES_REMOVED",
+        "TRAILING_SPACES_INSIDE_QUOTES_REMOVED",
+        "ACCENTS_REMOVED",
+        "NORMALIZED_PDF_EXTENSION",
+    ]
+
+    normalized_filename, actions = _normalize_excel_filename(
+        "filename.pdf", accent_map
+    )
+    assert normalized_filename == "filename.pdf"
+    assert actions == []

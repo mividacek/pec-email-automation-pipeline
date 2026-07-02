@@ -279,8 +279,8 @@ def test_environment_generation_creates_output_files():
 
     generate_environment(250)
 
-    assert Path("richiesta.xlsx").exists()
-    assert Path("doc").exists()
+    assert Path("/Users/mivi/Documents/Projects/data/generated/richiesta.xlsx").exists()
+    assert Path("/Users/mivi/Documents/Projects/data/generated/doc").exists()
 
 
 # GENERATING PHYSICAL ATTACHMENTS ON DISK
@@ -294,7 +294,7 @@ def test_environment_generation_creates_attachment_files():
 
     generate_environment(250)
 
-    files = list(Path("doc").iterdir())
+    files = list(Path("/Users/mivi/Documents/Projects/data/generated/doc").iterdir())
 
     assert len(files) > 0
 
@@ -310,7 +310,7 @@ def test_excel_contains_requested_number_of_records():
 
     generate_environment(250)
 
-    df = pd.read_excel("richiesta.xlsx")
+    df = pd.read_excel("/Users/mivi/Documents/Projects/data/generated/richiesta.xlsx")
 
     assert len(df) == 250
 
@@ -326,7 +326,7 @@ def test_excel_contains_expected_columns():
 
     generate_environment(250)
 
-    df = pd.read_excel("richiesta.xlsx")
+    df = pd.read_excel("/Users/mivi/Documents/Projects/data/generated/richiesta.xlsx")
 
     expected_columns = {"Azienda", "VAT", "Email", "Allegato 1", "Allegato 2"}
 
@@ -344,7 +344,7 @@ def test_generated_records_have_required_fields():
 
     generate_environment(250)
 
-    df = pd.read_excel("richiesta.xlsx")
+    df = pd.read_excel("/Users/mivi/Documents/Projects/data/generated/richiesta.xlsx")
 
     assert df["Azienda"].notna().all()
     assert df["VAT"].notna().all()
@@ -363,12 +363,12 @@ def test_environment_generates_orphan_attachments():
 
     generate_environment(250)
 
-    df = pd.read_excel("richiesta.xlsx")
+    df = pd.read_excel("/Users/mivi/Documents/Projects/data/generated/richiesta.xlsx")
 
     excel_files = set(
         df["Allegato 1"].dropna().tolist() + df["Allegato 2"].dropna().tolist()
     )
 
-    disk_files = {file.name for file in Path("doc").iterdir() if file.is_file()}
+    disk_files = {file.name for file in Path("/Users/mivi/Documents/Projects/data/generated/doc").iterdir() if file.is_file()}
 
     assert len(disk_files - excel_files) > 0
